@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from io import open
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
@@ -9,6 +10,36 @@ cap = cv2.VideoCapture("correr.mp4")
 bodyPoints1 = [19, 15, 13, 11, 23, 25, 27, 29, 31]
 bodyPoints2 = [20, 16, 14, 12, 24, 26, 28, 30, 32]
 bodyPoints1.extend(bodyPoints2)
+
+
+def loadPoints(archivoL):
+    cadena = archivoL.readline()
+    lista = [int(num) for num in cadena.split()]
+    lenList = len(lista)
+    xOut = lista[0 : int(lenList / 2)]
+    yOut = lista[int(lenList / 2) : lenList]
+    print(xOut)
+    print(yOut)
+    return xOut, yOut
+
+
+def recordedBody():
+    archivo = open("datos.txt", "r")
+    xLoad, yLoad = loadPoints(archivo)
+    graficar(400, 700, xLoad, yLoad)
+    archivo.close()
+    cv2.waitKey(10000)
+
+
+def storePoints(xi, yi, archivoR):
+    xi.extend(yi)
+    if not xi:
+        return
+    xi = ["{:03}".format(i) for i in xi]
+    cadena = " ".join(xi) + "\n"
+    # cadena = " ".join(map(str, xi)) + "\n"
+    print(cadena)
+    archivoR.write(cadena)
 
 
 def graficar(height, width, xii, yii):
@@ -38,6 +69,7 @@ def graficar(height, width, xii, yii):
 
 
 def drawPoints():
+    archivo = open("datos.txt", "w")
     with mp_pose.Pose(static_image_mode=False, model_complexity=0) as pose:
         while True:
             ret, frame = cap.read()
@@ -52,16 +84,16 @@ def drawPoints():
                 for bodyPart in bodyPoints1:
                     xi.append(int(results.pose_landmarks.landmark[bodyPart].x * width))
                     yi.append(int(results.pose_landmarks.landmark[bodyPart].y * height))
-                xm1 = int((xi[3] + xi[12]) / 2)
-                ym1 = int((yi[3] + yi[12]) / 2)
-                xm2 = int((xi[4] + xi[13]) / 2)
-                ym2 = int((yi[4] + yi[13]) / 2)
-                xi.extend([xm1, xm2])
-                yi.extend([ym1, ym2])
+                xi.extend([int((xi[3] + xi[12]) / 2), int((xi[4] + xi[13]) / 2)])
+                yi.extend([int((yi[3] + yi[12]) / 2), int((yi[4] + yi[13]) / 2)])
             graficar(height, width, xi, yi)
+
+            storePoints(xi, yi, archivo)
             cv2.imshow("Frame", frame)
             if cv2.waitKey(1) & 0xFF == 27:
                 break
+    archivo.close()
 
 
 drawPoints()
+recordedBody()
